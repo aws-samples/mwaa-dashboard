@@ -1,0 +1,13 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "mwaa-dashboard"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-YOURUNIQUEBUCKETNAMEHERE"
+s3_prefix = "mwaa-dashboard"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"
+[default.build]
+[default.build.parameters]
+parallel="true"
+use_container="true"

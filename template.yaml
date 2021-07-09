@@ -1,0 +1,286 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  MWAA CloudWatch Dashboard Automation
+
+Globals:
+  Function:
+    Runtime: python3.8
+    Handler: app.lambda_handler
+    Tracing: Active
+    Timeout: 5
+    Environment:
+      Variables:
+        LAMBDA_INSIGHTS_LOG_LEVEL: info
+        # Powertools env vars: https://awslabs.github.io/aws-lambda-powertools-python/#environment-variables
+        POWERTOOLS_LOGGER_SAMPLE_RATE: 0.1
+        POWERTOOLS_LOGGER_LOG_EVENT: true
+        POWERTOOLS_METRICS_NAMESPACE: MWAADashboardAutomation
+        POWERTOOLS_SERVICE_NAME: MWAADashboardAutomation
+    Layers:
+      - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+
+Resources:
+  BackupDashboardFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: functions/backup_dashboard
+      DeploymentPreference:
+        Type: AllAtOnce
+      Description: Backup MWAA CloudWatch Dashboards
+      Environment:
+        Variables:
+          DASHBOARD_TEMPLATE_TABLE: !Ref DashboardTemplateTable
+      Policies:
+        - CloudWatchLambdaInsightsExecutionRolePolicy
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DashboardTemplateTable
+        - Statement:
+            - Sid: CloudWatchDashboardPolicy
+              Effect: Allow
+              Action:
+                - cloudwatch:*
+              Resource: "*"
+
+  CreateDashboardFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: functions/create_dashboard
+      DeploymentPreference:
+        Type: AllAtOnce
+      Description: Create MWAA CloudWatch Dashboard
+      MemorySize: 160
+      Timeout: 8 # cold starts were timing out at 5s
+      Environment:
+        Variables:
+          DASHBOARD_TEMPLATE_TABLE: !Ref DashboardTemplateTable
+      Policies:
+        - CloudWatchLambdaInsightsExecutionRolePolicy
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DashboardTemplateTable
+        - Statement:
+            - Sid: AirflowPolicy
+              Effect: Allow
+              Action:
+                - airflow:*
+              Resource: "*"
+            - Sid: CloudWatchDashboardPolicy
+              Effect: Allow
+              Action:
+                - cloudwatch:*
+              Resource: "*"
+
+  DeleteDashboardFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: functions/delete_dashboard
+      DeploymentPreference:
+        Type: AllAtOnce
+      Description: Delete MWAA CloudWatch Dashboard
+      Policies:
+        - CloudWatchLambdaInsightsExecutionRolePolicy
+        - Statement:
+            - Sid: AirflowPolicy
+              Effect: Allow
+              Action:
+                - airflow:*
+              Resource: "*"
+            - Sid: CloudWatchDashboardPolicy
+              Effect: Allow
+              Action:
+                - cloudwatch:*
+              Resource: "*"
+
+  CreateAlarmsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: functions/create_alarms
+      DeploymentPreference:
+        Type: AllAtOnce
+      Description: Create MWAA CloudWatch Alarms
+      Policies:
+        - CloudWatchLambdaInsightsExecutionRolePolicy
+        - Statement:
+            - Sid: AirflowPolicy
+              Effect: Allow
+              Action:
+                - airflow:*
+              Resource: "*"
+            - Sid: CloudWatchAlarmsPolicy
+              Effect: Allow
+              Action:
+                - cloudwatch:*
+              Resource: "*"
+
+  DeleteAlarmsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      AutoPublishAlias: live
+      CodeUri: functions/delete_alarms
+      Timeout: 10
+      DeploymentPreference:
+        Type: AllAtOnce
+      Description: Delete MWAA CloudWatch Alarms
+      Policies:
+        - CloudWatchLambdaInsightsExecutionRolePolicy
+        - Statement:
+            - Sid: AirflowPolicy
+              Effect: Allow
+              Action:
+                - airflow:*
+              Resource: "*"
+            - Sid: CloudWatchAlarmsPolicy
+              Effect: Allow
+              Action:
+                - cloudwatch:*
+              Resource: "*"
+
+  SeedDynamoDBFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/seed_dynamodb
+      Description: Seed DynamoDB data
+      Environment:
+        Variables:
+          DASHBOARD_TEMPLATE_TABLE: !Ref DashboardTemplateTable
+      Policies:
+        - CloudWatchLambdaInsightsExecutionRolePolicy
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DashboardTemplateTable
+        - Statement:
+            - Sid: DynamoDBPolicy
+              Effect: Allow
+              Action:
+                - dynamodb:*
+              Resource: "*"
+            - Sid: CloudWatchPolicy
+              Effect: Allow
+              Action:
+                - cloudwatch:*
+              Resource: "*"
+
+  SeedDynamoDB:
+    Type: Custom::SeedDynamoDBFunction
+    Properties:
+      ServiceToken: !GetAtt SeedDynamoDBFunction.Arn
+
+  ScheduledRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Run MWAA Step Function every 10 mins
+      ScheduleExpression: "rate(10 minutes)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt MWAADashboardStateMachine.Arn
+          Id: "TargetStateMachineV1"
+          RoleArn: !GetAtt StateMachineStartExecutionRole.Arn
+
+  MWAADashboardStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachine/mwaa-dashboard.asl.json
+      DefinitionSubstitutions:
+        BackupDashboardFunctionArn: !GetAtt BackupDashboardFunction.Arn
+        CreateDashboardFunctionArn: !GetAtt CreateDashboardFunction.Arn
+        DeleteDashboardFunctionArn: !GetAtt DeleteDashboardFunction.Arn
+        CreateAlarmsFunctionArn: !GetAtt CreateAlarmsFunction.Arn
+        DeleteAlarmsFunctionArn: !GetAtt DeleteAlarmsFunction.Arn
+      Role: !GetAtt StatesExecutionRole.Arn
+      Logging:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt MWAADashboardStateMachineLogGroup.Arn
+        IncludeExecutionData: true
+        Level: ALL
+      Tracing:
+        Enabled: True
+
+  StatesExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - !Sub states.${AWS::Region}.amazonaws.com
+            Action: "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        - PolicyName: StatesExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                  - "cloudwatch:*"
+                  - "logs:*"
+                Resource: "*"
+
+  MWAADashboardStateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+
+  StateMachineStartExecutionPolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      # ManagedPolicyName: state-machine-start-execution
+      Roles:
+        - !Ref StateMachineStartExecutionRole
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - "states:StartExecution"
+            Resource:
+              - !Ref MWAADashboardStateMachine
+
+  StateMachineStartExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      # RoleName: state-machine-start-execution
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: "sts:AssumeRole"
+
+  DashboardTemplateTable:
+    Type: AWS::Serverless::SimpleTable
+
+Outputs:
+  BackupDashboardFunction:
+    Description: Backup MWAA CloudWatch Dashboard function name
+    Value: !Ref BackupDashboardFunction
+  CreateDashboardFunction:
+    Description: Create MWAA CloudWatch Dashboard function name
+    Value: !Ref CreateDashboardFunction
+  DeleteDashboardFunction:
+    Description: Delete MWAA CloudWatch Dashboard function name
+    Value: !Ref DeleteDashboardFunction
+  CreateAlarmsFunction:
+    Description: Create MWAA CloudWatch Alarms function name
+    Value: !Ref CreateAlarmsFunction
+  DeleteAlarmsFunction:
+    Description: Delete MWAA CloudWatch Alarms function name
+    Value: !Ref DeleteAlarmsFunction
+  SeedDynamoDBFunction:
+    Description: Seed DynamoDB function name
+    Value: !Ref SeedDynamoDBFunction
+  StateMachine:
+    Description: Step Functions state machine name
+    Value: !Ref MWAADashboardStateMachine
+  EventBridgeRule:
+    Description: EventBridge rule name
+    Value: !Ref ScheduledRule
+  DashboardTemplateTable:
+    Description: CloudWatch Dashboard Template DynamoDB Table
+    Value: !Ref DashboardTemplateTable

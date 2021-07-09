@@ -1,0 +1,139 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Creates MWAA Cloudwatch Dashboard
+Parameters:
+  DashboardName:
+    Description: Enter the name of the CloudWatch Dashboard
+    Type: String
+  EnvironmentName:
+    Description: Enter the name of the MWAA Environment
+    Type: String    
+Resources:
+  BasicDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Ref DashboardName
+      DashboardBody:
+        Fn::Sub: '{
+              "widgets": [
+                  {
+                      "type": "metric",
+                      "x": 0,
+                      "y": 0,
+                      "width": 12,
+                      "height": 6,
+                      "properties": {
+                          "view": "timeSeries",
+                          "stacked": true,
+                          "metrics": [
+                              [
+                                  "AmazonMWAA",
+                                  "QueuedTasks",
+                                  "Function",
+                                  "Executor",
+                                  "Environment",
+                                  "${EnvironmentName}"
+                              ]
+                          ],
+                          "region": "${AWS::Region}",
+                          "title": "QueuedTasks ${EnvironmentName}",
+                          "period": 300
+                      }
+                  },
+                  {
+                      "type": "metric",
+                      "x": 0,
+                      "y": 6,
+                      "width": 12,
+                      "height": 6,
+                      "properties": {
+                          "view": "timeSeries",
+                          "stacked": true,
+                          "metrics": [
+                              [
+                                  "AmazonMWAA",
+                                  "RunningTasks",
+                                  "Function",
+                                  "Executor",
+                                  "Environment",
+                                  "${EnvironmentName}"
+                              ]
+                          ],
+                          "region": "${AWS::Region}",
+                          "title": "RunningTasks ${EnvironmentName}",
+                          "period": 300
+                      }
+                  },
+                  {
+                      "type": "metric",
+                      "x": 12,
+                      "y": 6,
+                      "width": 12,
+                      "height": 6,
+                      "properties": {
+                          "view": "timeSeries",
+                          "stacked": true,
+                          "metrics": [
+                              [
+                                  "AmazonMWAA",
+                                  "SchedulerHeartbeat",
+                                  "Function",
+                                  "Scheduler",
+                                  "Environment",
+                                  "${EnvironmentName}"
+                              ]
+                          ],
+                          "region": "${AWS::Region}",
+                          "title": "SchedulerHeartbeat ${EnvironmentName}",
+                          "period": 300
+                      }
+                  },
+                  {
+                      "type": "metric",
+                      "x": 12,
+                      "y": 0,
+                      "width": 12,
+                      "height": 6,
+                      "properties": {
+                          "view": "timeSeries",
+                          "stacked": true,
+                          "metrics": [
+                              [
+                                  "AmazonMWAA",
+                                  "TasksPending",
+                                  "Function",
+                                  "Scheduler",
+                                  "Environment",
+                                  "${EnvironmentName}"
+                              ]
+                          ],
+                          "region": "${AWS::Region}",
+                          "title": "TasksPending ${EnvironmentName}",
+                          "period": 300
+                      }
+                  },
+                  {
+                      "type": "metric",
+                      "x": 0,
+                      "y": 12,
+                      "width": 24,
+                      "height": 6,
+                      "properties": {
+                          "view": "timeSeries",
+                          "stacked": true,
+                          "region": "${AWS::Region}",
+                          "metrics": [
+                              [
+                                  "AmazonMWAA",
+                                  "TotalParseTime",
+                                  "Function",
+                                  "DAG Processing",
+                                  "Environment",
+                                  "${EnvironmentName}"
+                              ]
+                          ],
+                          "title": "TotalParseTime  ${EnvironmentName}",
+                          "period": 300
+                      }
+                  }
+              ]
+          }'

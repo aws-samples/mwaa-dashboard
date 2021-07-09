@@ -1,0 +1,110 @@
+{
+  "Comment": "MWAA Dashboard Automation",
+  "StartAt": "UpdateDashboards",
+  "States": {
+    "UpdateDashboards": {
+      "Type": "Parallel",
+      "End": true,
+      "Branches": [
+        {
+          "StartAt": "CreateDashboard",
+          "States": {
+            "CreateDashboard": {
+              "Type": "Task",
+              "Resource": "${CreateDashboardFunctionArn}",
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.CreateDashboardError",
+                  "Next": "CreateDashboardFailed"
+                }
+              ],
+              "ResultPath": "$.CreateDashboardResult",
+              "End": true
+            },
+            "CreateDashboardFailed": {
+              "Type": "Fail"
+            }
+          }
+        },
+        {
+          "StartAt": "CreateAlarms",
+          "States": {
+            "CreateAlarms": {
+              "Type": "Task",
+              "Resource": "${CreateAlarmsFunctionArn}",
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.CreateAlarmsError",
+                  "Next": "CreateAlarmsFailed"
+                }
+              ],
+              "ResultPath": "$.CreateAlarmsResult",
+              "End": true
+            },
+            "CreateAlarmsFailed": {
+              "Type": "Fail"
+            }
+          }
+        },
+        {
+          "StartAt": "DeleteAlarms",
+          "States": {
+            "DeleteAlarms": {
+              "Type": "Task",
+              "Resource": "${DeleteAlarmsFunctionArn}",
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.DeleteAlarmsError",
+                  "Next": "DeleteAlarmsFailed"
+                }
+              ],
+              "ResultPath": "$.DeleteAlarmsResult",
+              "End": true
+            },
+            "DeleteAlarmsFailed": {
+              "Type": "Fail"
+            }
+          }
+        },
+        {
+          "StartAt": "BackupDashboard",
+          "States": {
+            "BackupDashboard": {
+              "Type": "Task",
+              "Resource": "${BackupDashboardFunctionArn}",
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.BackupDashboardError",
+                  "Next": "BackupDashboardFailed"
+                }
+              ],
+              "Next": "DeleteDashboard"
+            },
+            "DeleteDashboard": {
+              "Type": "Task",
+              "Resource": "${DeleteDashboardFunctionArn}",
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.DeleteDashboardError",
+                  "Next": "DeleteDashboardFailed"
+                }
+              ],
+              "End": true
+            },
+            "BackupDashboardFailed": {
+              "Type": "Fail"
+            },
+            "DeleteDashboardFailed": {
+              "Type": "Fail"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

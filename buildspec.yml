@@ -1,0 +1,30 @@
+version: 0.2
+
+env:
+  parameter-store:
+    CODEPIPELINE_BUCKET: "/mwaa-dashboard/s3_bucket"
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+
+  pre_build:
+    commands:
+      - python -m venv env
+      - . env/bin/activate
+      - pip install -U pip
+      - pip install -r requirements.txt
+
+  build:
+    commands:
+      - sam build
+
+  post_build:
+    commands:
+      - sam package --output-template-file packaged.yaml --s3-bucket $CODEPIPELINE_BUCKET
+
+artifacts:
+  type: zip
+  files:
+    - packaged.yaml
