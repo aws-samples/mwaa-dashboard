@@ -1,6 +1,9 @@
 # CloudWatch Dashboard Automation for MWAA
 
-Amazon Managed Workflows for Apache Airflow (MWAA) does not automatically create a CloudWatch dashboard which can help customers identify key metrics. What's more, when adding or deleting MWAA environments, any existing dashboards are not automatically updated. This solution will automatically create a dashboard and some useful alarms for any MWAA environments are currently deployed.
+Amazon Managed Workflows for [Apache Airflow](https://aws.amazon.com/managed-workflows-for-apache-airflow/) (MWAA) is a fully managed service that makes it easy to run open-source versions of Apache Airflow on AWS, and to build workflows to execute your extract-transform-load (ETL) jobs and data pipelines. When working with MWAA, you will often need to know more about the performance of your Airflow environment in order to improve performance or reduce costs. Airflow itself emits a number of useful metrics to [Amazon CloudWatch](https://aws.amazon.com/cloudwatch/), which are documented [here](https://docs.aws.amazon.com/mwaa/latest/userguide/access-metrics-cw-202.html). MWAA allows customers to define their own CloudWatch dashboards and alarms based upon the metrics and logs that Apache Airflow emits.
+
+Airflow exposes metrics such as number of DAG processes, DAG bag size, number of currently running tasks, task failures, successes, etc. It does this constantly for each environment deployed. Airflow is already set up to send metrics for an MWAA environment to CloudWatch. We will automate the creation of a CloudWatch dashboard which displays several of these key metrics, along with CloudWatch alarms. These alarms receive notifications when the metrics fall outside of the thresholds that you configure, and allow you to perform actions in response.
+
 
 This solution includes:
 
