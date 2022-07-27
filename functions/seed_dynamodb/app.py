@@ -2,10 +2,10 @@
 
 import logging
 import os
+from datetime import datetime
 
 import boto3
 import cfnresponse
-from datetime import datetime
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -23,7 +23,9 @@ def lambda_handler(event, context):
             dashboard_template_path = (
                 os.environ["LAMBDA_TASK_ROOT"] + "/dashboard-template.json"
             )
-            print("Looking for dashboard-template.json at " + dashboard_template_path)
+            logger.info(
+                "Looking for dashboard-template.json at %s", dashboard_template_path
+            )
             template_data = open(dashboard_template_path).read()
 
             response = table.put_item(
@@ -35,6 +37,10 @@ def lambda_handler(event, context):
             )
             logger.info(response)
             cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
-    except Exception as e:
-        logger.error("Unexpected error: %s" % e)
+        if event["RequestType"] == "Delete":
+            logger.info("Deleting DynamoDB table %s", table)
+            responseData["Message"] = "Resource deletion successful!"
+            cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+    except Exception as exception:
+        logger.error("Unexpected error: %s", exception)
         cfnresponse.send(event, context, cfnresponse.FAILED, responseData)

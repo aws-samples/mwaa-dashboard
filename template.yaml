@@ -5,20 +5,20 @@ Description: >-
 
 Globals:
   Function:
-    Runtime: python3.8
+    Runtime: python3.9
     Handler: app.lambda_handler
     Tracing: Active
     Timeout: 5
-    Environment:
-      Variables:
-        LAMBDA_INSIGHTS_LOG_LEVEL: info
-        # Powertools env vars: https://awslabs.github.io/aws-lambda-powertools-python/#environment-variables
-        POWERTOOLS_LOGGER_SAMPLE_RATE: 0.1
-        POWERTOOLS_LOGGER_LOG_EVENT: true
-        POWERTOOLS_METRICS_NAMESPACE: MWAADashboardAutomation
-        POWERTOOLS_SERVICE_NAME: MWAADashboardAutomation
-    Layers:
-      - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+    # Environment:
+    #   Variables:
+    #     LAMBDA_INSIGHTS_LOG_LEVEL: info
+    #     # Powertools env vars: https://awslabs.github.io/aws-lambda-powertools-python/#environment-variables
+    #     POWERTOOLS_LOGGER_SAMPLE_RATE: 0.1
+    #     POWERTOOLS_LOGGER_LOG_EVENT: true
+    #     POWERTOOLS_METRICS_NAMESPACE: MWAADashboardAutomation
+    #     POWERTOOLS_SERVICE_NAME: MWAADashboardAutomation
+    # Layers:
+    #   - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:18"
 
 Resources:
   BackupDashboardFunction:
