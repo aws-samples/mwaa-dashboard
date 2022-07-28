@@ -8,17 +8,17 @@ Globals:
     Runtime: python3.9
     Handler: app.lambda_handler
     Tracing: Active
-    Timeout: 5
-    # Environment:
-    #   Variables:
-    #     LAMBDA_INSIGHTS_LOG_LEVEL: info
-    #     # Powertools env vars: https://awslabs.github.io/aws-lambda-powertools-python/#environment-variables
-    #     POWERTOOLS_LOGGER_SAMPLE_RATE: 0.1
-    #     POWERTOOLS_LOGGER_LOG_EVENT: true
-    #     POWERTOOLS_METRICS_NAMESPACE: MWAADashboardAutomation
-    #     POWERTOOLS_SERVICE_NAME: MWAADashboardAutomation
-    # Layers:
-    #   - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:18"
+    Timeout: 30
+    Environment:
+      Variables:
+        LAMBDA_INSIGHTS_LOG_LEVEL: info
+        # Powertools env vars: https://awslabs.github.io/aws-lambda-powertools-python/#environment-variables
+        POWERTOOLS_LOGGER_SAMPLE_RATE: 0.1
+        POWERTOOLS_LOGGER_LOG_EVENT: true
+        POWERTOOLS_METRICS_NAMESPACE: MWAADashboardAutomation
+        POWERTOOLS_SERVICE_NAME: MWAADashboardAutomation
+    Layers:
+      - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:18"
 
 Resources:
   BackupDashboardFunction:
@@ -52,7 +52,7 @@ Resources:
         Type: AllAtOnce
       Description: Create MWAA CloudWatch Dashboard
       MemorySize: 160
-      Timeout: 8 # cold starts were timing out at 5s
+      Timeout: 10 # cold starts were timing out at 5s
       Environment:
         Variables:
           DASHBOARD_TEMPLATE_TABLE: !Ref DashboardTemplateTable
@@ -99,6 +99,7 @@ Resources:
     Properties:
       AutoPublishAlias: live
       CodeUri: functions/create_alarms
+      Timeout: 30
       DeploymentPreference:
         Type: AllAtOnce
       Description: Create MWAA CloudWatch Alarms
